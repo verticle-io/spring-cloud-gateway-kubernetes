@@ -12,13 +12,13 @@ spring:
 
 logging:
   level:
-    #org.springframework.cloud.gateway: DEBUG
-    #org.springframework.http.server.reactive: DEBUG
-    #org.springframework.web.reactive: DEBUG
-    #org.springframework.boot.autoconfigure.web: DEBUG
-    #reactor.netty: DEBUG
-    #org.springframework.web.client.RestTemplate: DEBUG
-    #org.springframework.security: DEBUG
+    org.springframework.cloud.gateway: WARN
+    org.springframework.http.server.reactive: WARN
+    org.springframework.web.reactive: WARN
+    org.springframework.boot.autoconfigure.web: WARN
+    reactor.netty: WARN
+    org.springframework.web.client.RestTemplate: WARN
+    org.springframework.security: WARN
 
 management:
   endpoints:

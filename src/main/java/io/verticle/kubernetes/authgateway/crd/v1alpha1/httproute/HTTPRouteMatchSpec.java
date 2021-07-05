@@ -5,7 +5,6 @@ public class HTTPRouteMatchSpec {
     HTTPPathMatchSpec path;
     //HTTPHeaderMatch headers;
     //HTTPQueryParamMatch queryParams;
-
     //LocalObjectReference extensionRef
 
 

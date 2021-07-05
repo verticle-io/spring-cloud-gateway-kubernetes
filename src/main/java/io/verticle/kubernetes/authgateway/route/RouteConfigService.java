@@ -58,16 +58,12 @@ public class RouteConfigService implements ApplicationEventPublisherAware, Appli
         HTTPRouteRuleListSpec rulesList = resource.getSpec().getRules();
         HostnameSpec hostnameSpec = resource.getSpec().getHostnames();
 
-
         Flux<Route> fluxRoutes = builder.routes().route(resource.getMetadata().getName(), r -> {
-
 
             AtomicReference<Buildable<Route>> route = new AtomicReference<>();
             rulesList.forEach(
 
                     httpRouteRuleSpec -> {
-
-
                         AtomicReference<BooleanSpec> b = new AtomicReference<>();
 
                         // match paths
@@ -87,7 +83,6 @@ public class RouteConfigService implements ApplicationEventPublisherAware, Appli
 
                         })));
 
-
                         httpRouteRuleSpec.getForwardTo().forEach(
                                 httpRouteForwardToSpec -> {
 
@@ -96,7 +91,7 @@ public class RouteConfigService implements ApplicationEventPublisherAware, Appli
                                             .host(httpRouteForwardToSpec.getServiceName())
                                             .port(httpRouteForwardToSpec.getPort())
                                             .build();
-                                    //ObjectUtils.defaultIfNull(httpRouteForwardToSpec.getWeight(), 100);
+                                    // TODO: add weights - ObjectUtils.defaultIfNull(httpRouteForwardToSpec.getWeight(), 100);
                                     route.set(b.get().uri(uri));
                                 });
 
