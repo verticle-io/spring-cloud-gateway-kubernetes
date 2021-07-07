@@ -1,5 +1,6 @@
 package io.verticle.kubernetes.authgateway.route;
 
+import io.verticle.kubernetes.authgateway.crd.v1alpha1.httproute.HTTPRouteFilterSpec;
 import io.verticle.kubernetes.authgateway.crd.v1alpha1.httproute.HTTPRouteForwardToSpec;
 import io.verticle.kubernetes.authgateway.crd.v1alpha1.httproute.HTTPRouteRuleSpec;
 import io.verticle.kubernetes.authgateway.crd.v1alpha1.httproute.HostnameSpec;
@@ -72,6 +73,12 @@ public class RoutePredicateConfigurer {
         }
     }
 
+    /**
+     * implements https://gateway-api.sigs.k8s.io/references/spec/#networking.x-k8s.io/v1alpha1.HTTPPathMatch
+     * @param r
+     * @param b
+     * @param httpRouteRuleSpec
+     */
     protected void applyPathPredicate(PredicateSpec r, AtomicReference<BooleanSpec> b, HTTPRouteRuleSpec httpRouteRuleSpec){
 
         if (httpRouteRuleSpec.getMatches().size() > 0){
@@ -89,6 +96,14 @@ public class RoutePredicateConfigurer {
         }
     }
 
+    /**
+     * adds a weight predicate
+     * implements Custom filter
+     * https://gateway-api.sigs.k8s.io/references/spec/#networking.x-k8s.io/v1alpha1.HTTPRouteFilter
+     * @param r
+     * @param b
+     * @param httpRouteForwardToSpec
+     */
     protected void applyWeightPredicate(PredicateSpec r, AtomicReference<BooleanSpec> b, HTTPRouteForwardToSpec httpRouteForwardToSpec){
 
         if (httpRouteForwardToSpec.getWeight() > 0){
@@ -101,45 +116,98 @@ public class RoutePredicateConfigurer {
 
     }
 
+    /**
+     * implements Custom filter
+     * https://gateway-api.sigs.k8s.io/references/spec/#networking.x-k8s.io/v1alpha1.HTTPRouteFilter
+     * @param r
+     * @param b
+     */
     protected void applyCookiePredicate(PredicateSpec r, AtomicReference<BooleanSpec> b){
         b.get().and().predicate(cookieRoutePredicateFactory.apply(config -> {
-
+            // TODO implement
         }));
     }
 
+    /**
+     * implements Custom filter
+     * https://gateway-api.sigs.k8s.io/references/spec/#networking.x-k8s.io/v1alpha1.HTTPRouteFilter
+     * @param r
+     * @param b
+     */
     protected void applyAfterPredicate(PredicateSpec r, AtomicReference<BooleanSpec> b){
         b.get().and().predicate(afterRoutePredicateFactory.apply(config -> {
-
+            // TODO implement
         }));
     }
 
+    /**
+     * implements Custom filter
+     * https://gateway-api.sigs.k8s.io/references/spec/#networking.x-k8s.io/v1alpha1.HTTPRouteFilter
+     * @param r
+     * @param b
+     */
     protected void applyBeforePredicate(PredicateSpec r, AtomicReference<BooleanSpec> b){
         b.get().and().predicate(beforeRoutePredicateFactory.apply(config -> {
-
+            // TODO implement
         }));
     }
 
+    /**
+     * implements Custom filter
+     * https://gateway-api.sigs.k8s.io/references/spec/#networking.x-k8s.io/v1alpha1.HTTPRouteFilter
+     * @param r
+     * @param b
+     */
     protected void applyBetweenPredicate(PredicateSpec r, AtomicReference<BooleanSpec> b){
         b.get().and().predicate(betweenRoutePredicateFactory.apply(config -> {
-
+            // TODO implement
         }));
     }
 
+    /**
+     * implements Custom filter
+     * https://gateway-api.sigs.k8s.io/references/spec/#networking.x-k8s.io/v1alpha1.HTTPRouteFilter
+     * @param r
+     * @param b
+     */
     protected void applyMethodPredicate(PredicateSpec r, AtomicReference<BooleanSpec> b){
         b.get().and().predicate(methodRoutePredicateFactory.apply(config -> {
-
+            // TODO implement
         }));
     }
 
+    /**
+     * implements https://gateway-api.sigs.k8s.io/references/spec/#networking.x-k8s.io/v1alpha1.HTTPQueryParamMatch
+     * @param r
+     * @param b
+     */
     protected void applyQueryPredicate(PredicateSpec r, AtomicReference<BooleanSpec> b){
         b.get().and().predicate(queryRoutePredicateFactory.apply(config -> {
-
+            // TODO implement
         }));
     }
 
+    /**
+     * implements https://gateway-api.sigs.k8s.io/references/spec/#networking.x-k8s.io/v1alpha1.HTTPHeaderMatch
+     * @param r
+     * @param b
+     * @param f
+     */
+    protected void applyHeaderPredicate(PredicateSpec r, AtomicReference<BooleanSpec> b, HTTPRouteFilterSpec f){
+        b.get().and().predicate(queryRoutePredicateFactory.apply(config -> {
+            // TODO implement
+        }));
+    }
+
+    /**
+     * implements Custom filter
+     * https://gateway-api.sigs.k8s.io/references/spec/#networking.x-k8s.io/v1alpha1.HTTPRouteFilter
+     * @param r
+     * @param b
+     */
     protected void applyRemoteAddrPredicate(PredicateSpec r, AtomicReference<BooleanSpec> b){
         b.get().and().predicate(remoteAddrRoutePredicateFactory.apply(config -> {
-
+            // TODO implement
         }));
     }
 }

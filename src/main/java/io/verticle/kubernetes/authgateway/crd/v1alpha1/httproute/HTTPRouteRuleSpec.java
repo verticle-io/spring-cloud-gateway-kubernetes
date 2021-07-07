@@ -4,6 +4,8 @@ public class HTTPRouteRuleSpec {
 
     HTTPRouteMatchListSpec matches;
     HTTPRouteForwardToListSpec forwardTo;
+    HTTPRouteFilterListSpec filters;
+
 
     public HTTPRouteMatchListSpec getMatches() {
         return matches;
@@ -19,5 +21,13 @@ public class HTTPRouteRuleSpec {
 
     public void setForwardTo(HTTPRouteForwardToListSpec forwardTo) {
         this.forwardTo = forwardTo;
+    }
+
+    public HTTPRouteFilterListSpec getFilters() {
+        return filters;
+    }
+
+    public void setFilters(HTTPRouteFilterListSpec filters) {
+        this.filters = filters;
     }
 }

@@ -1,8 +1,10 @@
 package io.verticle.kubernetes.authgateway.route;
 
 import io.verticle.kubernetes.authgateway.crd.v1alpha1.httproute.HTTPRoute;
+import io.verticle.kubernetes.authgateway.crd.v1alpha1.httproute.HTTPRouteFilterTypeEnum;
 import io.verticle.kubernetes.authgateway.crd.v1alpha1.httproute.HTTPRouteRuleListSpec;
 import io.verticle.kubernetes.authgateway.crd.v1alpha1.httproute.HostnameSpec;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.BeansException;
@@ -79,7 +81,32 @@ public class RouteConfigService implements ApplicationEventPublisherAware, Appli
 
                         // FILTERS
                         // apply filters
+
+                        // apikey via GatewayClass
                         routeFilterConfigurer.applyApikeyHeaderFilter(b);
+
+                        // configured filters
+                        if (ObjectUtils.isNotEmpty(httpRouteRuleSpec.getFilters())){
+
+                            httpRouteRuleSpec.getFilters().forEach(httpRouteFilterSpec -> {
+
+                                if (httpRouteFilterSpec.getRequestHeaderModifier() != null) {
+                                    routeFilterConfigurer.applyHeaderFilter(r, b, httpRouteFilterSpec.getRequestHeaderModifier());
+                                }
+
+                                if (httpRouteFilterSpec.getRequestMirror() != null) {
+                                    // TODO routeFilterConfigurer.applyHeaderFilter(r, b, httpRouteFilterSpec.getRequestMirror());
+                                }
+
+                                // custom filters
+                                if (HTTPRouteFilterTypeEnum.ExtensionRef.equals(httpRouteFilterSpec.getType())) {
+                                    routeFilterConfigurer.applyCustomFilter(r, b, httpRouteFilterSpec.getExtensionRef());
+                                }
+
+                            });
+                        }
+
+
 
                         // TARGET
                         httpRouteRuleSpec.getForwardTo().forEach(
@@ -107,7 +134,6 @@ public class RouteConfigService implements ApplicationEventPublisherAware, Appli
 
 
     }
-
 
     @Override
     public void setApplicationEventPublisher(ApplicationEventPublisher applicationEventPublisher) {
