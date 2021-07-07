@@ -11,9 +11,9 @@ public class KeyService {
     @Autowired
     KubernetesSecretReader secretReader;
 
-    public boolean match(String keyFromRequest) {
+    public boolean match(String keyFromRequest, String namespace) {
 
-        Map<String, Apikey> apikeyMap = secretReader.readApikeySecretsInNamespace();
+        Map<String, Apikey> apikeyMap = secretReader.readApikeySecretsInNamespace(namespace);
         return apikeyMap.containsKey(keyFromRequest);
     }
 

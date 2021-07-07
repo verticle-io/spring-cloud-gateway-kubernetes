@@ -1,5 +1,6 @@
 package io.verticle.kubernetes.authgateway;
 
+import io.fabric8.kubernetes.client.KubernetesClient;
 import io.verticle.kubernetes.authgateway.apikeys.KeyService;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -25,11 +26,19 @@ public class ApikeyHeaderGatewayFilterFactory extends AbstractGatewayFilterFacto
 
     public static final String APIKEY = "x-authgw-apikey";
     Log log = LogFactory.getLog(this.getClass());
+
     @Autowired
     KeyService keyService;
 
+    @Autowired
+    KubernetesClient kubernetesClient;
+
     public ApikeyHeaderGatewayFilterFactory() {
         super(Config.class);
+    }
+
+    private String getNamespace(){
+        return kubernetesClient.getNamespace();
     }
 
     @Override
@@ -41,8 +50,8 @@ public class ApikeyHeaderGatewayFilterFactory extends AbstractGatewayFilterFacto
 
             boolean apiKeyMatches = false;
             String apiKey = exchange.getRequest().getHeaders().getFirst(APIKEY);
-            apiKeyMatches = keyService.match(apiKey);
-            log.info("apikey: " + apiKey + " matches: " + apiKeyMatches);
+            apiKeyMatches = keyService.match(apiKey, getNamespace());
+            log.info("apikey: " + apiKey + "in NS " + getNamespace() + " matches: " + apiKeyMatches);
 
             if (!apiKeyMatches || apiKey == null) {
                 log.info("Access denied");

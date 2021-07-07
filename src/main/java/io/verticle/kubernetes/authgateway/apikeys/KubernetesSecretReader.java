@@ -24,11 +24,11 @@ public class KubernetesSecretReader {
     Log log = LogFactory.getLog(this.getClass());
 
     @Cacheable("secrets")
-    public Map<String, Apikey> readApikeySecretsInNamespace() {
+    public Map<String, Apikey> readApikeySecretsInNamespace(String namespace) {
         Map<String, Apikey> apikeyList = new HashMap();
 
         KubernetesClient client = new DefaultKubernetesClient();
-        SecretList secretList = client.secrets().inNamespace("default").withLabel(LABEL_VERTICLE_AUTHGATEWAY, LABEL_APIKEY).list();
+        SecretList secretList = client.secrets().inNamespace(namespace).withLabel(LABEL_VERTICLE_AUTHGATEWAY, LABEL_APIKEY).list();
         secretList.getItems().forEach(s -> {
             log.info("loading secret " + s);
             log.info("secret data " + s.getData());
