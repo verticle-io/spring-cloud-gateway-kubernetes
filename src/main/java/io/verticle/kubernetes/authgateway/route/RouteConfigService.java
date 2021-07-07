@@ -1,6 +1,5 @@
 package io.verticle.kubernetes.authgateway.route;
 
-import io.verticle.kubernetes.authgateway.ApikeyHeaderGatewayFilterFactory;
 import io.verticle.kubernetes.authgateway.crd.v1alpha1.httproute.HTTPRoute;
 import io.verticle.kubernetes.authgateway.crd.v1alpha1.httproute.HTTPRouteRuleListSpec;
 import io.verticle.kubernetes.authgateway.crd.v1alpha1.httproute.HostnameSpec;
@@ -32,6 +31,12 @@ public class RouteConfigService implements ApplicationEventPublisherAware, Appli
     Log log = LogFactory.getLog(this.getClass());
 
     @Autowired
+    RoutePredicateConfigurer routePredicateConfigurer;
+
+    @Autowired
+    RouteFilterConfigurer routeFilterConfigurer;
+
+    @Autowired
     RuntimeRouteLocator runtimeRouteLocator;
 
     @Autowired
@@ -39,9 +44,6 @@ public class RouteConfigService implements ApplicationEventPublisherAware, Appli
 
     @Autowired
     RouteLocatorBuilder builder;
-
-    @Autowired
-    ApikeyHeaderGatewayFilterFactory apikeyHeaderGateway;
 
     @Autowired
     RouteDefinitionWriter routeDefinitionWriter;
@@ -66,32 +68,31 @@ public class RouteConfigService implements ApplicationEventPublisherAware, Appli
                     httpRouteRuleSpec -> {
                         AtomicReference<BooleanSpec> b = new AtomicReference<>();
 
+                        b.set(r.alwaysTrue());
+
+                        // PREDICATES
                         // match paths
-                        httpRouteRuleSpec.getMatches().forEach(
-                                httpRouteMatchSpec -> {
-                                    b.set(r.path(httpRouteMatchSpec.getPath().getValue()));
-                                }
-                        );
+                        routePredicateConfigurer.applyPathPredicate(r, b, httpRouteRuleSpec);
 
                         // match hostnames
-                        hostnameSpec.forEach(hostname -> {
-                            b.get().and().host(hostname);
-                        });
+                        routePredicateConfigurer.applyHostPredicate(r, b, hostnameSpec);
 
+                        // FILTERS
                         // apply filters
-                        b.get().filters(f -> f.filter(apikeyHeaderGateway.apply(config -> {
+                        routeFilterConfigurer.applyApikeyHeaderFilter(b);
 
-                        })));
-
+                        // TARGET
                         httpRouteRuleSpec.getForwardTo().forEach(
                                 httpRouteForwardToSpec -> {
+
+                                    routePredicateConfigurer.applyWeightPredicate(r, b, httpRouteForwardToSpec);
 
                                     URI uri = new DefaultUriBuilderFactory().builder()
                                             .scheme("http")
                                             .host(httpRouteForwardToSpec.getServiceName())
                                             .port(httpRouteForwardToSpec.getPort())
                                             .build();
-                                    // TODO: add weights - ObjectUtils.defaultIfNull(httpRouteForwardToSpec.getWeight(), 100);
+
                                     route.set(b.get().uri(uri));
                                 });
 
