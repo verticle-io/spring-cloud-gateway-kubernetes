@@ -2,9 +2,8 @@ package io.verticle.kubernetes.authgateway;
 
 
 import io.fabric8.kubernetes.client.KubernetesClient;
-import io.fabric8.kubernetes.client.dsl.base.CustomResourceDefinitionContext;
 import io.javaoperatorsdk.operator.api.*;
-import io.verticle.kubernetes.authgateway.crd.v1alpha1.httproute.HTTPRoute;
+import io.verticle.apex.gateway.crd.v1alpha1.httproute.HTTPRoute;
 import io.verticle.kubernetes.authgateway.route.RouteConfigService;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;

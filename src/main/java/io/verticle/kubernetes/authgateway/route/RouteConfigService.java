@@ -1,14 +1,16 @@
 package io.verticle.kubernetes.authgateway.route;
 
-import io.verticle.kubernetes.authgateway.ApikeyHeaderGatewayFilterFactory;
-import io.verticle.kubernetes.authgateway.crd.v1alpha1.httproute.HTTPRoute;
-import io.verticle.kubernetes.authgateway.crd.v1alpha1.httproute.HTTPRouteRuleListSpec;
-import io.verticle.kubernetes.authgateway.crd.v1alpha1.httproute.HostnameSpec;
+import io.verticle.apex.gateway.crd.v1alpha1.httproute.HTTPRoute;
+import io.verticle.apex.gateway.crd.v1alpha1.httproute.HTTPRouteFilterTypeEnum;
+import io.verticle.apex.gateway.crd.v1alpha1.httproute.HTTPRouteRuleListSpec;
+import io.verticle.apex.gateway.crd.v1alpha1.httproute.HostnameSpec;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.event.RefreshRoutesEvent;
+import org.springframework.cloud.gateway.route.InMemoryRouteDefinitionRepository;
 import org.springframework.cloud.gateway.route.Route;
 import org.springframework.cloud.gateway.route.RouteDefinitionWriter;
 import org.springframework.cloud.gateway.route.RouteLocator;
@@ -32,6 +34,15 @@ public class RouteConfigService implements ApplicationEventPublisherAware, Appli
     Log log = LogFactory.getLog(this.getClass());
 
     @Autowired
+    InMemoryRouteDefinitionRepository repository;
+
+    @Autowired
+    RoutePredicateConfigurer routePredicateConfigurer;
+
+    @Autowired
+    RouteFilterConfigurer routeFilterConfigurer;
+
+    @Autowired
     RuntimeRouteLocator runtimeRouteLocator;
 
     @Autowired
@@ -41,14 +52,12 @@ public class RouteConfigService implements ApplicationEventPublisherAware, Appli
     RouteLocatorBuilder builder;
 
     @Autowired
-    ApikeyHeaderGatewayFilterFactory apikeyHeaderGateway;
-
-    @Autowired
     RouteDefinitionWriter routeDefinitionWriter;
 
 
     ApplicationEventPublisher publisher;
     private ApplicationContext applicationContext;
+
 
 
     public void mapCustomResource(HTTPRoute resource) {
@@ -66,32 +75,56 @@ public class RouteConfigService implements ApplicationEventPublisherAware, Appli
                     httpRouteRuleSpec -> {
                         AtomicReference<BooleanSpec> b = new AtomicReference<>();
 
+                        b.set(r.alwaysTrue());
+
+                        // PREDICATES
                         // match paths
-                        httpRouteRuleSpec.getMatches().forEach(
-                                httpRouteMatchSpec -> {
-                                    b.set(r.path(httpRouteMatchSpec.getPath().getValue()));
-                                }
-                        );
+                        routePredicateConfigurer.applyPathPredicate(r, b, httpRouteRuleSpec);
 
                         // match hostnames
-                        hostnameSpec.forEach(hostname -> {
-                            b.get().and().host(hostname);
-                        });
+                        routePredicateConfigurer.applyHostPredicate(r, b, hostnameSpec);
 
+                        // FILTERS
                         // apply filters
-                        b.get().filters(f -> f.filter(apikeyHeaderGateway.apply(config -> {
 
-                        })));
+                        // apikey via GatewayClass
+                        routeFilterConfigurer.applyApikeyHeaderFilter(b);
 
+                        // configured filters
+                        if (ObjectUtils.isNotEmpty(httpRouteRuleSpec.getFilters())){
+
+                            httpRouteRuleSpec.getFilters().forEach(httpRouteFilterSpec -> {
+
+                                if (httpRouteFilterSpec.getRequestHeaderModifier() != null) {
+                                    routeFilterConfigurer.applyHeaderFilter(r, b, httpRouteFilterSpec.getRequestHeaderModifier());
+                                }
+
+                                if (httpRouteFilterSpec.getRequestMirror() != null) {
+                                    // TODO routeFilterConfigurer.applyHeaderFilter(r, b, httpRouteFilterSpec.getRequestMirror());
+                                }
+
+                                // custom filters
+                                if (HTTPRouteFilterTypeEnum.ExtensionRef.equals(httpRouteFilterSpec.getType())) {
+                                    routeFilterConfigurer.applyCustomFilter(r, b, httpRouteFilterSpec.getExtensionRef());
+                                }
+
+                            });
+                        }
+
+
+
+                        // TARGET
                         httpRouteRuleSpec.getForwardTo().forEach(
                                 httpRouteForwardToSpec -> {
+
+                                    routePredicateConfigurer.applyWeightPredicate(r, b, httpRouteForwardToSpec);
 
                                     URI uri = new DefaultUriBuilderFactory().builder()
                                             .scheme("http")
                                             .host(httpRouteForwardToSpec.getServiceName())
                                             .port(httpRouteForwardToSpec.getPort())
                                             .build();
-                                    // TODO: add weights - ObjectUtils.defaultIfNull(httpRouteForwardToSpec.getWeight(), 100);
+
                                     route.set(b.get().uri(uri));
                                 });
 
@@ -106,7 +139,6 @@ public class RouteConfigService implements ApplicationEventPublisherAware, Appli
 
 
     }
-
 
     @Override
     public void setApplicationEventPublisher(ApplicationEventPublisher applicationEventPublisher) {
