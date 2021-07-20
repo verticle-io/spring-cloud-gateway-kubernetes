@@ -3,67 +3,30 @@ package io.verticle.kubernetes.authgateway.route;
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.base.CustomResourceDefinitionContext;
-import io.verticle.kubernetes.authgateway.ApikeyHeaderGatewayFilterFactory;
 import io.verticle.kubernetes.authgateway.GatewayClass;
-import io.verticle.kubernetes.authgateway.crd.v1alpha1.httproute.HTTPRequestHeaderFilterSpec;
-import io.verticle.kubernetes.authgateway.crd.v1alpha1.httproute.LocalObjectReference;
+import io.verticle.apex.gateway.crd.v1alpha1.httproute.HTTPRequestHeaderFilterSpec;
+import io.verticle.apex.gateway.crd.v1alpha1.httproute.LocalObjectReference;
 import org.apache.commons.lang3.ObjectUtils;
-import org.checkerframework.checker.units.qual.A;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cloud.gateway.filter.factory.*;
+import org.springframework.cloud.gateway.filter.factory.GatewayFilterFactory;
 import org.springframework.cloud.gateway.route.builder.BooleanSpec;
 import org.springframework.cloud.gateway.route.builder.PredicateSpec;
+import org.springframework.cloud.gateway.support.ConfigurationService;
 import org.springframework.stereotype.Service;
 import org.yaml.snakeyaml.Yaml;
 
-import java.io.InputStream;
-import java.io.StringBufferInputStream;
-import java.io.StringReader;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import javax.annotation.PostConstruct;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Service
 public class RouteFilterConfigurer {
 
     @Autowired
+    ConfigurationService configurationService;
+
+    @Autowired
     GatewayClass gatewayClass;
-
-    enum SCGFilters {
-        AddRequestHeader,
-        AddRequestParameter,
-        AddResponseHeader,
-        DedupeResponseHeader,
-        CircuitBreaker,
-        FallbackHeaders,
-        MapRequestHeader,
-        PrefixPath,
-        PreserveHost,
-        RequestRateLimiter,
-        RedirectTo,
-        RemoveRequestHeader,
-        RemoveResponseHeader,
-        RemoveRequestParameter,
-        RewritePath,
-        RewriteLocationResponseHeader,
-        RewriteResponseHeader,
-        SaveSession,
-        SecureHeaders,
-        SetPath,
-        SetRequestHeader,
-        SetResponseHeader,
-        SetStatus,
-        StripPrefix,
-        Retry,
-        RequestSize,
-        SetRequestHost
-
-    }
-    // ModifyResponseBody not supported yet
-    // ModifyRequestBody not supported yet
-
 
     static final String FEATURE_APIKEY_ENABELED = "apikeyEnabled";
 
@@ -72,100 +35,25 @@ public class RouteFilterConfigurer {
 
     // verticle filters
 
-    @Autowired
-    ApikeyHeaderGatewayFilterFactory apikeyHeaderGateway;
-
-    // filters implementing Gateway API spec
 
     @Autowired
-    AddRequestHeaderGatewayFilterFactory addRequestHeaderGatewayFilterFactory;
-
-    @Autowired
-    RemoveRequestHeaderGatewayFilterFactory removeRequestHeaderGatewayFilterFactory;
-
-    @Autowired
-    MapRequestHeaderGatewayFilterFactory mapRequestHeaderGatewayFilterFactory;
+    List<GatewayFilterFactory> gatewayFilterList = new ArrayList<>();
+    Map<String, GatewayFilterFactory> gatewayFilters = new HashMap<>();
 
 
-    // other custom filter from Spring Cloud Gateway
-
-    @Autowired
-    AddRequestParameterGatewayFilterFactory addRequestParameterGatewayFilterFactory;
-
-    @Autowired
-    AddResponseHeaderGatewayFilterFactory addResponseHeaderGatewayFilterFactory;
-
-    @Autowired
-    DedupeResponseHeaderGatewayFilterFactory dedupeResponseHeaderGatewayFilterFactory;
-
-    //@Autowired
-    //SpringCloudCircuitBreakerFilterFactory circuitBreakerGatewayFilterFactory;
-
-    //@Autowired
-    //FallbackHeadersGatewayFilterFactory fallbackHeadersGatewayFilterFactory;
-
-    @Autowired
-    PrefixPathGatewayFilterFactory prefixPathGatewayFilterFactory;
-
-    @Autowired
-    PreserveHostHeaderGatewayFilterFactory preserveHostHeaderGatewayFilterFactory;
-
-    //@Autowired
-    //RequestRateLimiterGatewayFilterFactory requestRateLimiterGatewayFilterFactory;
-
-    @Autowired
-    RedirectToGatewayFilterFactory redirectToGatewayFilterFactory;
-
-    @Autowired
-    RemoveResponseHeaderGatewayFilterFactory removeResponseHeaderGatewayFilterFactory;
-
-    @Autowired
-    RemoveRequestParameterGatewayFilterFactory removeRequestParameterGatewayFilterFactory;
-
-    @Autowired
-    RewritePathGatewayFilterFactory rewritePathGatewayFilterFactory;
-
-    @Autowired
-    RewriteLocationResponseHeaderGatewayFilterFactory rewriteLocationResponseHeaderGatewayFilterFactory;
-
-    @Autowired
-    RewriteResponseHeaderGatewayFilterFactory rewriteResponseHeaderGatewayFilterFactory;
-
-    @Autowired
-    SaveSessionGatewayFilterFactory saveSessionGatewayFilterFactory;
-
-    @Autowired
-    SecureHeadersGatewayFilterFactory secureHeadersGatewayFilterFactory;
-
-    @Autowired
-    SetPathGatewayFilterFactory setPathGatewayFilterFactory;
-
-    @Autowired
-    SetRequestHeaderGatewayFilterFactory setRequestHeaderGatewayFilterFactory;
-
-    @Autowired
-    SetResponseHeaderGatewayFilterFactory setResponseHeaderGatewayFilterFactory;
-
-    @Autowired
-    SetStatusGatewayFilterFactory setStatusGatewayFilterFactory;
-
-    @Autowired
-    StripPrefixGatewayFilterFactory stripPrefixGatewayFilterFactory;
-
-    @Autowired
-    RetryGatewayFilterFactory retryGatewayFilterFactory;
-
-    @Autowired
-    RequestSizeGatewayFilterFactory requestSizeGatewayFilterFactory;
-
-    @Autowired
-    SetRequestHostHeaderGatewayFilterFactory setRequestHostHeaderGatewayFilterFactory;
-
+    @PostConstruct
+    public void initialize(){
+        gatewayFilterList.forEach(filter -> {
+            gatewayFilters.put(filter.name(), filter);
+        });
+    }
 
     protected void applyApikeyHeaderFilter(AtomicReference<BooleanSpec> b) {
 
+        GatewayFilterFactory factory = gatewayFilters.get("ApikeyHeader");
+
         if (gatewayClass.hasFeature(GatewayClass.Feature.apikey)){
-            b.get().filters(f -> f.filter(apikeyHeaderGateway.apply(config -> {
+            b.get().filters(f -> f.filter(factory.apply(config -> {
                 // NO CFG
             })));
         }
@@ -178,238 +66,68 @@ public class RouteFilterConfigurer {
      */
     protected void applyHeaderFilter(PredicateSpec r, AtomicReference<BooleanSpec> b, HTTPRequestHeaderFilterSpec hfs){
 
+
         //add
+        final GatewayFilterFactory addfactory = gatewayFilters.get("AddRequestHeader");
         if (hfs.getAdd().size() > 0){
-            b.get().filters(f -> f.filter(addRequestHeaderGatewayFilterFactory.apply(config -> {
-                // TODO implement
-            })));
+            b.get().filters(f -> f.filter(addfactory.apply(
+                    configurationService.with(addfactory)
+                    .properties(hfs.getAdd())
+                    .bind()
+            )));
         }
 
         // set (map)
+        final GatewayFilterFactory setFactory = gatewayFilters.get("SetRequestHeader");
         if (hfs.getSet().size() > 0) {
-            b.get().filters(f -> f.filter(removeRequestHeaderGatewayFilterFactory.apply(config -> {
-                // TODO implement
-            })));
+            b.get().filters(f -> f.filter(setFactory.apply(
+                    configurationService.with(setFactory)
+                            .properties(hfs.getAdd())
+                            .bind()
+            )));
         }
 
         // remove
+        final GatewayFilterFactory removeFactory = gatewayFilters.get("RemoveRequestHeader");
         if (hfs.getRemove().size() > 0) {
-            b.get().filters(f -> f.filter(removeRequestHeaderGatewayFilterFactory.apply(config -> {
-                // TODO implement
-            })));
+            b.get().filters(f -> f.filter(removeFactory.apply(
+                    configurationService.with(removeFactory)
+                            .properties(hfs.getAdd())
+                            .bind()
+            )));
         }
     }
 
 
+    protected void applyNamedFilter(AtomicReference<BooleanSpec> b, Map<String, String> configMap, String filterFactoryName){
 
-    protected void applyAddRequestHeaderFilter(PredicateSpec r, AtomicReference<BooleanSpec> b, Map<String, Object> configMap){
-        b.get().filters(f -> f.filter(addRequestHeaderGatewayFilterFactory.apply(config -> {
-            // TODO implement
-        })));
-    }
-    protected void applyAddRequestParameterFilter(PredicateSpec r, AtomicReference<BooleanSpec> b, Map<String, Object> configMap){
-        b.get().filters(f -> f.filter(removeRequestHeaderGatewayFilterFactory.apply(config -> {
-            // TODO implement
-        })));
-    }
-    protected void applyAddResponseHeaderFilter(PredicateSpec r, AtomicReference<BooleanSpec> b, Map<String, Object> configMap){
-        b.get().filters(f -> f.filter(removeRequestHeaderGatewayFilterFactory.apply(config -> {
-            // TODO implement
-        })));
-    }
-    protected void applyDedupeResponseHeaderFilter(PredicateSpec r, AtomicReference<BooleanSpec> b, Map<String, Object> configMap){
-        b.get().filters(f -> f.filter(removeRequestHeaderGatewayFilterFactory.apply(config -> {
-            // TODO implement
-        })));
-    }
-    protected void applyCircuitBreakerFilter(PredicateSpec r, AtomicReference<BooleanSpec> b, Map<String, Object> configMap){
-        b.get().filters(f -> f.filter(removeRequestHeaderGatewayFilterFactory.apply(config -> {
-            // TODO implement
-        })));
-    }
-    protected void applyFallbackHeadersFilter(PredicateSpec r, AtomicReference<BooleanSpec> b, Map<String, Object> configMap){
-        b.get().filters(f -> f.filter(removeRequestHeaderGatewayFilterFactory.apply(config -> {
-            // TODO implement
-        })));
-    }
-    protected void applyMapRequestHeaderFilter(PredicateSpec r, AtomicReference<BooleanSpec> b, Map<String, Object> configMap){
-        b.get().filters(f -> f.filter(removeRequestHeaderGatewayFilterFactory.apply(config -> {
-            // TODO implement
-        })));
-    }
-    protected void applyPrefixPathFilter(PredicateSpec r, AtomicReference<BooleanSpec> b, Map<String, Object> configMap){
-        b.get().filters(f -> f.filter(removeRequestHeaderGatewayFilterFactory.apply(config -> {
-            // TODO implement
-        })));
-    }
-    protected void applyPreserveHostFilter(PredicateSpec r, AtomicReference<BooleanSpec> b, Map<String, Object> configMap){
-        b.get().filters(f -> f.filter(removeRequestHeaderGatewayFilterFactory.apply(config -> {
-            // TODO implement
-        })));
-    }
-    protected void applyRequestRateLimiterFilter(PredicateSpec r, AtomicReference<BooleanSpec> b, Map<String, Object> configMap){
-        b.get().filters(f -> f.filter(removeRequestHeaderGatewayFilterFactory.apply(config -> {
-            // TODO implement
-        })));
-    }
-    protected void applyRedirectToFilter(PredicateSpec r, AtomicReference<BooleanSpec> b, Map<String, Object> configMap){
-        b.get().filters(f -> f.filter(removeRequestHeaderGatewayFilterFactory.apply(config -> {
-            // TODO implement
-        })));
-    }
-    protected void applyRemoveRequestHeaderFilter(PredicateSpec r, AtomicReference<BooleanSpec> b, Map<String, Object> configMap){
-        b.get().filters(f -> f.filter(removeRequestHeaderGatewayFilterFactory.apply(config -> {
-            // TODO implement
-        })));
-    }
-    protected void applyRemoveResponseHeaderFilter(PredicateSpec r, AtomicReference<BooleanSpec> b, Map<String, Object> configMap){
-        b.get().filters(f -> f.filter(removeRequestHeaderGatewayFilterFactory.apply(config -> {
-            // TODO implement
-        })));
-    }
-    protected void applyRemoveRequestParameterFilter(PredicateSpec r, AtomicReference<BooleanSpec> b, Map<String, Object> configMap){
-        b.get().filters(f -> f.filter(removeRequestHeaderGatewayFilterFactory.apply(config -> {
-            // TODO implement
-        })));
-    }
-    protected void applyRewritePathFilter(PredicateSpec r, AtomicReference<BooleanSpec> b, Map<String, Object> configMap){
-        b.get().filters(f -> f.filter(removeRequestHeaderGatewayFilterFactory.apply(config -> {
-            // TODO implement
-        })));
-    }
-    protected void applyRewriteLocationResponseHeaderFilter(PredicateSpec r, AtomicReference<BooleanSpec> b, Map<String, Object> configMap){
-        b.get().filters(f -> f.filter(removeRequestHeaderGatewayFilterFactory.apply(config -> {
-            // TODO implement
-        })));
-    }
-    protected void applyRewriteResponseHeaderFilter(PredicateSpec r, AtomicReference<BooleanSpec> b, Map<String, Object> configMap){
-        b.get().filters(f -> f.filter(removeRequestHeaderGatewayFilterFactory.apply(config -> {
-            // TODO implement
-        })));
-    }
-    protected void applySaveSessionFilter(PredicateSpec r, AtomicReference<BooleanSpec> b, Map<String, Object> configMap){
-        b.get().filters(f -> f.filter(removeRequestHeaderGatewayFilterFactory.apply(config -> {
-            // TODO implement
-        })));
-    }
-    protected void applySecureHeadersFilter(PredicateSpec r, AtomicReference<BooleanSpec> b, Map<String, Object> configMap){
-        b.get().filters(f -> f.filter(removeRequestHeaderGatewayFilterFactory.apply(config -> {
-            // TODO implement
-        })));
-    }
-    protected void applySetPathFilter(PredicateSpec r, AtomicReference<BooleanSpec> b, Map<String, Object> configMap){
-        b.get().filters(f -> f.filter(removeRequestHeaderGatewayFilterFactory.apply(config -> {
-            // TODO implement
-        })));
-    }
-    protected void applySetRequestHeaderFilter(PredicateSpec r, AtomicReference<BooleanSpec> b, Map<String, Object> configMap){
-        b.get().filters(f -> f.filter(removeRequestHeaderGatewayFilterFactory.apply(config -> {
-            // TODO implement
-        })));
-    }
-    protected void applySetResponseHeaderFilter(PredicateSpec r, AtomicReference<BooleanSpec> b, Map<String, Object> configMap){
-        b.get().filters(f -> f.filter(removeRequestHeaderGatewayFilterFactory.apply(config -> {
-            // TODO implement
-        })));
-    }
-    protected void applySetStatusFilter(PredicateSpec r, AtomicReference<BooleanSpec> b, Map<String, Object> configMap){
-        b.get().filters(f -> f.filter(removeRequestHeaderGatewayFilterFactory.apply(config -> {
-            // TODO implement
-        })));
-    }
-    protected void applyStripPrefixFilter(PredicateSpec r, AtomicReference<BooleanSpec> b, Map<String, Object> configMap){
-        b.get().filters(f -> f.filter(removeRequestHeaderGatewayFilterFactory.apply(config -> {
-            // TODO implement
-        })));
-    }
-    protected void applyRetryFilter(PredicateSpec r, AtomicReference<BooleanSpec> b, Map<String, Object> configMap){
-        b.get().filters(f -> f.filter(retryGatewayFilterFactory.apply(config -> {
-            config.setRetries((Integer) configMap.getOrDefault("retries", 7));
-            // TODO implement
-        })));
-    }
-    protected void applyRequestSizeFilter(PredicateSpec r, AtomicReference<BooleanSpec> b, Map<String, Object> configMap){
-        b.get().filters(f -> f.filter(removeRequestHeaderGatewayFilterFactory.apply(config -> {
-            // TODO implement
-        })));
-    }
-    protected void applySetRequestHostFilter(PredicateSpec r, AtomicReference<BooleanSpec> b, Map<String, Object> configMap){
-        b.get().filters(f -> f.filter(setRequestHostHeaderGatewayFilterFactory.apply(config -> {
-            // TODO implement
-        })));
-    }
+        GatewayFilterFactory factory = gatewayFilters.get(filterFactoryName);
 
-
-
+        b.get().filters(f -> f.filter(factory.apply(
+                configurationService.with(factory)
+                        .name(filterFactoryName)
+                        .properties(configMap)
+                        .bind()
+        )));
+    }
 
 
 
     public void applyCustomFilter(PredicateSpec r, AtomicReference<BooleanSpec> b, LocalObjectReference extensionRef) {
         Map<String, String> extensionConfig = locateExtensionAsConfigMap(extensionRef);
         String filterName = extensionConfig.getOrDefault("name", "");
-        Map<String, Object> args = parseArgs(extensionConfig.getOrDefault("args", ""));
+        Map<String, String> args = parseArgs(extensionConfig.getOrDefault("args", ""));
+
+        GatewayFilterFactory factory = gatewayFilters.get(filterName);
+
+        b.get().filters(f -> f.filter(factory.apply(
+                configurationService.with(factory)
+                        .name(filterName)
+                        .properties(args)
+                        .bind()
+        )));
 
 
-        SCGFilters filter = SCGFilters.valueOf(filterName);
-        
-        switch (filter){
-            case AddRequestHeader:
-                break;
-            case AddRequestParameter:
-                break;
-            case AddResponseHeader:
-                break;
-            case DedupeResponseHeader:
-                break;
-            case CircuitBreaker:
-                break;
-            case FallbackHeaders:
-                break;
-            case MapRequestHeader:
-                break;
-            case PrefixPath:
-                break;
-            case PreserveHost:
-                break;
-            case RequestRateLimiter:
-                break;
-            case RedirectTo:
-                break;
-            case RemoveRequestHeader:
-                break;
-            case RemoveResponseHeader:
-                break;
-            case RemoveRequestParameter:
-                break;
-            case RewritePath:
-                break;
-            case RewriteLocationResponseHeader:
-                break;
-            case RewriteResponseHeader:
-                break;
-            case SaveSession:
-                break;
-            case SecureHeaders:
-                break;
-            case SetPath:
-                break;
-            case SetRequestHeader:
-                break;
-            case SetResponseHeader:
-                break;
-            case SetStatus:
-                break;
-            case StripPrefix:
-                break;
-            case Retry:
-                applyRetryFilter(r, b, args);
-                break;
-            case RequestSize:
-                break;
-            case SetRequestHost:
-                break;
-
-        }
     }
 
     private Map<String, String> locateExtensionAsConfigMap(LocalObjectReference extensionRef){
@@ -428,9 +146,20 @@ public class RouteFilterConfigurer {
 
     }
 
-    private Map<String, Object> parseArgs(String args){
+    private Map<String, String> parseArgs(String args){
         Yaml yaml = new Yaml();
-        return yaml.load(args);
+
+        Map<String, Object> map = yaml.load(args);
+        Map<String,String> newMap =new HashMap<String,String>();
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            if(entry.getValue() instanceof String){
+                newMap.put(entry.getKey(), (String) entry.getValue());
+            } else {
+                newMap.put(entry.getKey(),String.valueOf(entry.getValue()));
+            }
+        }
+
+        return newMap;
     }
 
     private Map<String, Object> locateExtensionAsMap(LocalObjectReference extensionRef){

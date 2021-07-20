@@ -1,15 +1,16 @@
 package io.verticle.kubernetes.authgateway.route;
 
-import io.verticle.kubernetes.authgateway.crd.v1alpha1.httproute.HTTPRoute;
-import io.verticle.kubernetes.authgateway.crd.v1alpha1.httproute.HTTPRouteFilterTypeEnum;
-import io.verticle.kubernetes.authgateway.crd.v1alpha1.httproute.HTTPRouteRuleListSpec;
-import io.verticle.kubernetes.authgateway.crd.v1alpha1.httproute.HostnameSpec;
+import io.verticle.apex.gateway.crd.v1alpha1.httproute.HTTPRoute;
+import io.verticle.apex.gateway.crd.v1alpha1.httproute.HTTPRouteFilterTypeEnum;
+import io.verticle.apex.gateway.crd.v1alpha1.httproute.HTTPRouteRuleListSpec;
+import io.verticle.apex.gateway.crd.v1alpha1.httproute.HostnameSpec;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.event.RefreshRoutesEvent;
+import org.springframework.cloud.gateway.route.InMemoryRouteDefinitionRepository;
 import org.springframework.cloud.gateway.route.Route;
 import org.springframework.cloud.gateway.route.RouteDefinitionWriter;
 import org.springframework.cloud.gateway.route.RouteLocator;
@@ -33,6 +34,9 @@ public class RouteConfigService implements ApplicationEventPublisherAware, Appli
     Log log = LogFactory.getLog(this.getClass());
 
     @Autowired
+    InMemoryRouteDefinitionRepository repository;
+
+    @Autowired
     RoutePredicateConfigurer routePredicateConfigurer;
 
     @Autowired
@@ -53,6 +57,7 @@ public class RouteConfigService implements ApplicationEventPublisherAware, Appli
 
     ApplicationEventPublisher publisher;
     private ApplicationContext applicationContext;
+
 
 
     public void mapCustomResource(HTTPRoute resource) {

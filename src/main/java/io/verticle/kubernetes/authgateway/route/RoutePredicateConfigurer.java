@@ -1,9 +1,9 @@
 package io.verticle.kubernetes.authgateway.route;
 
-import io.verticle.kubernetes.authgateway.crd.v1alpha1.httproute.HTTPRouteFilterSpec;
-import io.verticle.kubernetes.authgateway.crd.v1alpha1.httproute.HTTPRouteForwardToSpec;
-import io.verticle.kubernetes.authgateway.crd.v1alpha1.httproute.HTTPRouteRuleSpec;
-import io.verticle.kubernetes.authgateway.crd.v1alpha1.httproute.HostnameSpec;
+import io.verticle.apex.gateway.crd.v1alpha1.httproute.HTTPRouteFilterSpec;
+import io.verticle.apex.gateway.crd.v1alpha1.httproute.HTTPRouteForwardToSpec;
+import io.verticle.apex.gateway.crd.v1alpha1.httproute.HTTPRouteRuleSpec;
+import io.verticle.apex.gateway.crd.v1alpha1.httproute.HostnameSpec;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.annotation.Autowired;

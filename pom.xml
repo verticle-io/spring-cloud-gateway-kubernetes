@@ -58,6 +58,11 @@
 			<artifactId>kubernetes-model-common</artifactId>
 			<version>5.4.1</version>
 		</dependency>
+		<dependency>
+			<groupId>io.verticle.apex</groupId>
+			<artifactId>gateway-crd-model</artifactId>
+			<version>v1alpha1</version>
+		</dependency>
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
